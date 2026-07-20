@@ -1,0 +1,39 @@
+## .NET / WPF
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.vspscc
+*.vssscc
+TestResults/
+
+## NuGet
+packages/
+!packages/repositories.config
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.sln.docstates
+
+## OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+## Build artifacts
+*.dll
+*.exe
+*.pdb
+*.xml
+
+## Local data / archives
+*.zip
+rates.json
+currencies_cache.json
+debug.log
+
