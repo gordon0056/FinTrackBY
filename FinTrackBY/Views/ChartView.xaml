@@ -1,0 +1,121 @@
+<UserControl x:Class="FinTrackBY.Views.ChartView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:oxy="http://oxyplot.org/wpf">
+    <UserControl.Resources>
+        <Style TargetType="oxy:TrackerControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="oxy:TrackerControl">
+                        <Border Background="{DynamicResource PanelBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="4"
+                                Padding="8,4">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <GroupBox Header="График динамики" Margin="2">
+        <DockPanel LastChildFill="True" Margin="5">
+            
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,5">
+                <Button Content="1нед" Margin="2" Padding="8,2"
+                        Command="{Binding SetPeriodCommand}" CommandParameter="1W">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedPeriod}" Value="1W">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="1М" Margin="2" Padding="8,2"
+                        Command="{Binding SetPeriodCommand}" CommandParameter="1M">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedPeriod}" Value="1M">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="3М" Margin="2" Padding="8,2"
+                        Command="{Binding SetPeriodCommand}" CommandParameter="3M">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedPeriod}" Value="3M">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="6М" Margin="2" Padding="8,2"
+                        Command="{Binding SetPeriodCommand}" CommandParameter="6M">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedPeriod}" Value="6M">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="1Г" Margin="2" Padding="8,2"
+                        Command="{Binding SetPeriodCommand}" CommandParameter="1Y">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedPeriod}" Value="1Y">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </StackPanel>
+
+            
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <Grid>
+                    <oxy:PlotView x:Name="PlotView"
+                                  Model="{Binding PlotModel}"
+                                  Controller="{Binding ChartController}"
+                                  MouseMove="PlotView_MouseMove"
+                                  MouseLeave="PlotView_MouseLeave" />
+                    <Canvas IsHitTestVisible="False">
+                        <Ellipse x:Name="TrackerDot" Width="10" Height="10"
+                                 Visibility="Collapsed"
+                                 Fill="{DynamicResource AccentBrush}"
+                                 Stroke="{DynamicResource PanelBrush}"
+                                 StrokeThickness="2" />
+                        <Border x:Name="TrackerPopup"
+                                Visibility="Collapsed"
+                                Background="{DynamicResource PanelBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="4"
+                                Padding="4,2">
+                            <TextBlock x:Name="TrackerText"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </Border>
+                    </Canvas>
+                </Grid>
+            </Border>
+        </DockPanel>
+    </GroupBox>
+</UserControl>
