@@ -1,24 +1,19 @@
 using System;
+using System.Collections.Generic;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using FinTrackBY.Models;
 
 namespace FinTrackBY.Tests.Unit
 {
     /// <summary>
-    /// Unit tests for DTO deserialization — verifies all fields map correctly from sample JSON.
-    /// Run manually or integrate with a test framework (NUnit/MSTest).
+    /// Unit tests for NBRB DTO deserialization - verifies all fields map correctly from sample JSON.
     /// </summary>
-    public static class DtoDeserializationTests
+    [TestClass]
+    public class DtoDeserializationTests
     {
-        public static void Run()
-        {
-            TestCurrencyDeserialization();
-            TestRateDeserialization();
-            TestRateShortDeserialization();
-            Console.WriteLine("All DTO deserialization tests passed.");
-        }
-
-        private static void TestCurrencyDeserialization()
+        [TestMethod]
+        public void Currency_MapsEveryFieldFromNbrbJson()
         {
             var json = @"{
                 ""Cur_ID"": 431,
@@ -42,19 +37,40 @@ namespace FinTrackBY.Tests.Unit
 
             var currency = JsonConvert.DeserializeObject<Currency>(json);
 
-            Assert(currency.Cur_ID == 431, "Cur_ID");
-            Assert(currency.Cur_Code == "840", "Cur_Code is string");
-            Assert(currency.Cur_Abbreviation == "USD", "Cur_Abbreviation");
-            Assert(currency.Cur_Name == "Доллар США", "Cur_Name");
-            Assert(currency.Cur_Scale == 1, "Cur_Scale");
-            Assert(currency.Cur_Periodicity == 0, "Cur_Periodicity");
-            Assert(currency.Cur_DateEnd.HasValue && currency.Cur_DateEnd.Value.Year == 2050, "Cur_DateEnd");
-            Assert(currency.IsActive, "IsActive (future sentinel)");
-
-            Console.WriteLine("  Currency deserialization: PASS");
+            Assert.IsNotNull(currency);
+            Assert.AreEqual(431, currency.Cur_ID);
+            Assert.IsNull(currency.Cur_ParentID);
+            Assert.AreEqual("840", currency.Cur_Code);
+            Assert.AreEqual("USD", currency.Cur_Abbreviation);
+            Assert.AreEqual("Доллар США", currency.Cur_Name);
+            Assert.AreEqual("Долар ЗША", currency.Cur_Name_Bel);
+            Assert.AreEqual("US Dollar", currency.Cur_Name_Eng);
+            Assert.AreEqual("Доллар", currency.Cur_QuotName);
+            Assert.AreEqual("Долар", currency.Cur_QuotName_Bel);
+            Assert.AreEqual("Dollar", currency.Cur_QuotName_Eng);
+            Assert.AreEqual("долларов", currency.Cur_NameMulti);
+            Assert.AreEqual("долараў", currency.Cur_Name_BelMulti);
+            Assert.AreEqual("dollars", currency.Cur_Name_EngMulti);
+            Assert.AreEqual(1, currency.Cur_Scale);
+            Assert.AreEqual(0, currency.Cur_Periodicity);
+            Assert.AreEqual(new DateTime(1995, 1, 1), currency.Cur_DateStart);
+            Assert.AreEqual(new DateTime(2050, 1, 1), currency.Cur_DateEnd.Value);
+            Assert.IsTrue(currency.IsActive, "Future Cur_DateEnd sentinel means the currency is active");
         }
 
-        private static void TestRateDeserialization()
+        [TestMethod]
+        public void Currency_TreatsMissingDateEndAsActive()
+        {
+            var json = @"{ ""Cur_ID"": 440, ""Cur_Abbreviation"": ""EUR"" }";
+
+            var currency = JsonConvert.DeserializeObject<Currency>(json);
+
+            Assert.IsNull(currency.Cur_DateEnd);
+            Assert.IsTrue(currency.IsActive);
+        }
+
+        [TestMethod]
+        public void Rate_MapsEveryFieldFromNbrbJson()
         {
             var json = @"{
                 ""Cur_ID"": 431,
@@ -67,17 +83,27 @@ namespace FinTrackBY.Tests.Unit
 
             var rate = JsonConvert.DeserializeObject<Rate>(json);
 
-            Assert(rate.Cur_ID == 431, "Cur_ID");
-            Assert(rate.Date == new DateTime(2026, 7, 24), "Date");
-            Assert(rate.Cur_Abbreviation == "USD", "Cur_Abbreviation");
-            Assert(rate.Cur_Scale == 1, "Cur_Scale");
-            Assert(rate.Cur_Name == "Доллар США", "Cur_Name");
-            Assert(rate.Cur_OfficialRate == 2.8909m, "Cur_OfficialRate");
-
-            Console.WriteLine("  Rate deserialization: PASS");
+            Assert.IsNotNull(rate);
+            Assert.AreEqual(431, rate.Cur_ID);
+            Assert.AreEqual(new DateTime(2026, 7, 24), rate.Date);
+            Assert.AreEqual("USD", rate.Cur_Abbreviation);
+            Assert.AreEqual(1, rate.Cur_Scale);
+            Assert.AreEqual("Доллар США", rate.Cur_Name);
+            Assert.AreEqual(2.8909m, rate.Cur_OfficialRate.Value, 0.0001m);
         }
 
-        private static void TestRateShortDeserialization()
+        [TestMethod]
+        public void Rate_MapsNullOfficialRate()
+        {
+            var json = @"{ ""Cur_ID"": 431, ""Date"": ""2026-07-24T00:00:00"", ""Cur_OfficialRate"": null }";
+
+            var rate = JsonConvert.DeserializeObject<Rate>(json);
+
+            Assert.IsNull(rate.Cur_OfficialRate);
+        }
+
+        [TestMethod]
+        public void RateShort_MapsEveryFieldFromNbrbJson()
         {
             var json = @"{
                 ""Cur_ID"": 431,
@@ -87,17 +113,44 @@ namespace FinTrackBY.Tests.Unit
 
             var rateShort = JsonConvert.DeserializeObject<RateShort>(json);
 
-            Assert(rateShort.Cur_ID == 431, "Cur_ID");
-            Assert(rateShort.Date == new DateTime(2026, 7, 24), "Date");
-            Assert(rateShort.Cur_OfficialRate == 2.8909m, "Cur_OfficialRate");
-
-            Console.WriteLine("  RateShort deserialization: PASS");
+            Assert.IsNotNull(rateShort);
+            Assert.AreEqual(431, rateShort.Cur_ID);
+            Assert.AreEqual(new DateTime(2026, 7, 24), rateShort.Date);
+            Assert.AreEqual(2.8909m, rateShort.Cur_OfficialRate.Value, 0.0001m);
         }
 
-        private static void Assert(bool condition, string name)
+        [TestMethod]
+        public void CurrencyRateRecord_DoesNotSerializeChangePercent()
         {
-            if (!condition)
-                throw new Exception($"Assertion failed: {name}");
+            var record = new CurrencyRateRecord
+            {
+                CurId = 431,
+                Date = new DateTime(2026, 7, 24),
+                Abbreviation = "USD",
+                Name = "Доллар США",
+                OfficialRate = 2.89m,
+                Scale = 1,
+                ChangePercent = 0.12m
+            };
+
+            var json = JsonConvert.SerializeObject(record);
+
+            Assert.IsFalse(json.Contains("ChangePercent"), "ChangePercent is UI-only state");
+            Assert.IsTrue(json.Contains("\"OfficialRate\""));
+        }
+
+        [TestMethod]
+        public void CurrencyRateRecord_RaisesPropertyChangedForEditedFields()
+        {
+            var record = new CurrencyRateRecord { Abbreviation = "USD", OfficialRate = 2.89m };
+            var changed = new List<string>();
+            record.PropertyChanged += (sender, args) => changed.Add(args.PropertyName);
+
+            record.OfficialRate = 3.00m;
+            record.OfficialRate = 3.00m;
+            record.Abbreviation = "USD_NEW";
+
+            CollectionAssert.AreEqual(new[] { "OfficialRate", "Abbreviation" }, changed);
         }
     }
 }

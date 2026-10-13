@@ -27,7 +27,7 @@ The app loads the currency list and rate dynamics, shows them in a table and on 
 
 * **Visual Studio 2022** with `.NET desktop development` workload
 * **.NET Framework 4.7.2** (target framework, Windows-only)
-* **NuGet packages** (restored automatically): `Newtonsoft.Json 13.0.3`, `OxyPlot.Core 2.1.2`, `OxyPlot.Wpf 2.1.2`
+* **NuGet packages** (restored automatically): `Newtonsoft.Json 13.0.3`, `OxyPlot.Core 2.1.2`, `OxyPlot.Wpf 2.1.2`, `MSTest.TestFramework 3.11.1`, `MSTest.TestAdapter 3.11.1`
 
 ---
 
@@ -46,6 +46,28 @@ NuGet restores Newtonsoft.Json and OxyPlot on first build.
 nuget restore FinTrackBY.sln
 msbuild FinTrackBY.sln /p:Configuration=Release /p:Platform="Any CPU"
 ```
+
+---
+
+### Tests
+
+Unit tests use **MSTest v2** and drive the services through a stubbed NBRB API client, so they need no network access.
+CI runs the same tests on every push and pull request and uploads the `results.trx` report as the `test-results` artifact.
+
+#### Visual Studio
+
+Open `FinTrackBY.sln` and use `Test` -> `Run All Tests`.
+
+#### Command line
+
+```cmd
+nuget restore FinTrackBY.sln
+msbuild FinTrackBY.sln /p:Configuration=Release /p:Platform="Any CPU"
+vstest.console.exe Tests\bin\Release\FinTrackBY.Tests.dll /logger:"trx;LogFileName=results.trx"
+```
+
+`vstest.console.exe` ships with Visual Studio and lives in
+`C:\Program Files\Microsoft Visual Studio\2022\<edition>\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe`.
 
 ---
 
@@ -83,7 +105,7 @@ FinTrackBY/Services  - API client, repositories, JSON storage, converter
 FinTrackBY/ViewModels - MVVM layer, chart and converter logic
 FinTrackBY/Views     - main window, table, chart, converter, dialogs
 FinTrackBY/Themes    - dark and light resource dictionaries
-Tests/Unit           - converter, repository, storage checks
+Tests/Unit           - MSTest checks for DTOs, repository, storage, services and converter
 ```
 
 ---
@@ -121,7 +143,7 @@ WPF-приложение для просмотра курсов валют На�
 
 * **Visual Studio 2022** с workload `.NET desktop development`
 * **.NET Framework 4.7.2** (целевой фреймворк, только Windows)
-* **NuGet-пакеты** (подтягиваются автоматически): `Newtonsoft.Json 13.0.3`, `OxyPlot.Core 2.1.2`, `OxyPlot.Wpf 2.1.2`
+* **NuGet-пакеты** (подтягиваются автоматически): `Newtonsoft.Json 13.0.3`, `OxyPlot.Core 2.1.2`, `OxyPlot.Wpf 2.1.2`, `MSTest.TestFramework 3.11.1`, `MSTest.TestAdapter 3.11.1`
 
 ---
 
@@ -140,6 +162,28 @@ NuGet подтянет Newtonsoft.Json и OxyPlot при первой сборк
 nuget restore FinTrackBY.sln
 msbuild FinTrackBY.sln /p:Configuration=Release /p:Platform="Any CPU"
 ```
+
+---
+
+### Тесты
+
+Юнит-тесты на **MSTest v2**: сервисы проверяются через стаб API-клиента НБРБ, поэтому сеть не нужна.
+CI запускает эти же тесты на каждом push и pull request и выкладывает отчет `results.trx` в артефакт `test-results`.
+
+#### Visual Studio
+
+Открыть `FinTrackBY.sln`, `Тест` -> `Запустить все тесты`.
+
+#### Командная строка
+
+```cmd
+nuget restore FinTrackBY.sln
+msbuild FinTrackBY.sln /p:Configuration=Release /p:Platform="Any CPU"
+vstest.console.exe Tests\bin\Release\FinTrackBY.Tests.dll /logger:"trx;LogFileName=results.trx"
+```
+
+`vstest.console.exe` входит в состав Visual Studio и лежит в
+`C:\Program Files\Microsoft Visual Studio\2022\<издание>\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe`.
 
 ---
 
@@ -177,7 +221,7 @@ FinTrackBY/Services  - API-клиент, репозитории, JSON-храни
 FinTrackBY/ViewModels - MVVM-слой, логика графика и конвертера
 FinTrackBY/Views     - главное окно, таблица, график, конвертер, диалоги
 FinTrackBY/Themes    - темная и светлая темы
-Tests/Unit           - проверки конвертера, репозитория, хранилища
+Tests/Unit           - MSTest-проверки DTO, репозитория, хранилища, сервисов и конвертера
 ```
 
 ---

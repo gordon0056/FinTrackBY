@@ -18,3 +18,44 @@ jobs:
         run: nuget restore FinTrackBY.sln
       - name: Build solution
         run: msbuild FinTrackBY.sln /p:Configuration=Release /p:Platform="Any CPU" /verbosity:minimal
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $testAssembly = Join-Path $env:GITHUB_WORKSPACE 'Tests\bin\Release\FinTrackBY.Tests.dll'
+          if (-not (Test-Path $testAssembly)) { throw "Test assembly not found: $testAssembly" }
+
+          # Test runner ships with the Visual Studio installation
+          $candidates = @()
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path $vswhere) {
+            $installations = & $vswhere -latest -products * -property installationPath
+            $candidates += $installations | ForEach-Object {
+              Join-Path $_ 'Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe'
+            }
+          }
+          $candidates += 'Enterprise', 'Professional', 'Community', 'BuildTools' | ForEach-Object {
+            Join-Path $env:ProgramFiles "Microsoft Visual Studio\2022\$_\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"
+          }
+
+          $vstest = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $vstest) { throw 'vstest.console.exe not found' }
+          Write-Host "Using $vstest"
+
+          $results = Join-Path $env:GITHUB_WORKSPACE 'TestResults'
+          & $vstest $testAssembly /logger:"trx;LogFileName=results.trx" /resultsDirectory:"$results"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # vstest exits with 0 when it discovers no tests at all, so verify the report itself
+          [xml]$report = Get-Content (Join-Path $results 'results.trx')
+          $counters = $report.TestRun.ResultSummary.Counters
+          Write-Host "Tests: total=$($counters.total) passed=$($counters.passed) failed=$($counters.failed)"
+
+          if ([int]$counters.total -eq 0) { throw 'No tests were discovered' }
+          if ([int]$counters.total -ne [int]$counters.executed) { throw 'Not all discovered tests were executed' }
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/*.trx
+          if-no-files-found: warn

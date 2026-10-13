@@ -1,90 +1,161 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FinTrackBY.Models;
 using FinTrackBY.Services;
 
 namespace FinTrackBY.Tests.Unit
 {
     /// <summary>
-    /// Unit tests for CurrencyConverter — BYN bridge calculation.
+    /// Unit tests for CurrencyConverter - cross-rate and BYN bridge calculations.
     /// </summary>
-    public static class CurrencyConverterTests
+    [TestClass]
+    public class CurrencyConverterTests
     {
-        public static void Run()
+        private const int UsdId = 431;
+        private const int EurId = 440;
+        private const int RubId = 298;
+        private const int BynId = -1;
+
+        private readonly CurrencyConverter _converter = new CurrencyConverter();
+        private readonly DateTime _date = new DateTime(2026, 7, 24);
+
+        [TestMethod]
+        public void Convert_BynToByn_ReturnsSameAmount()
         {
-            TestCrossRateCalculation();
-            TestNullHandling();
-            TestScaleHandling();
-            Console.WriteLine("All CurrencyConverter tests passed.");
+            var result = _converter.Convert(BynId, BynId, 123.45m, _date, Rates());
+
+            Assert.AreEqual(123.45m, result.Value, 0.0001m);
         }
 
-        private static void TestCrossRateCalculation()
+        [TestMethod]
+        public void Convert_BynToCurrency_DividesByRate()
         {
-            var converter = new CurrencyConverter();
-            var rates = new List<CurrencyRateRecord>
-            {
-                new CurrencyRateRecord { CurId = 1, Date = new DateTime(2026, 7, 24), OfficialRate = 2.89m, Scale = 1, Abbreviation = "USD" },
-                new CurrencyRateRecord { CurId = 2, Date = new DateTime(2026, 7, 24), OfficialRate = 3.35m, Scale = 1, Abbreviation = "EUR" }
-            };
+            // 100 BYN / (2.89 BYN per USD) = 34.6020...
+            var result = _converter.Convert(BynId, UsdId, 100m, _date, Rates());
 
-            // Convert 100 USD to EUR via BYN bridge
-            var result = converter.Convert(1, 2, 100, new DateTime(2026, 7, 24), rates);
-
-            // byn_per_unit_USD = 2.89 / 1 = 2.89
-            // byn_per_unit_EUR = 3.35 / 1 = 3.35
-            // amount_EUR = 100 * 2.89 / 3.35 = 86.268...
-            var expected = 100 * 2.89m / 3.35m;
-            var tolerance = 0.01m;
-
-            Assert(result.HasValue, "Result should have value");
-            Assert(Math.Abs(result.Value - expected) < tolerance, "Cross-rate calculation");
-
-            Console.WriteLine("  Cross-rate calculation: PASS");
+            Assert.AreEqual(100m / 2.89m, result.Value, 0.0001m);
         }
 
-        private static void TestNullHandling()
+        [TestMethod]
+        public void Convert_CurrencyToByn_MultipliesByRate()
         {
-            var converter = new CurrencyConverter();
-            var rates = new List<CurrencyRateRecord>
-            {
-                new CurrencyRateRecord { CurId = 1, Date = new DateTime(2026, 7, 24), OfficialRate = null, Scale = 1, Abbreviation = "USD" },
-                new CurrencyRateRecord { CurId = 2, Date = new DateTime(2026, 7, 24), OfficialRate = 3.35m, Scale = 1, Abbreviation = "EUR" }
-            };
+            // 100 USD * 2.89 BYN per USD = 289 BYN
+            var result = _converter.Convert(UsdId, BynId, 100m, _date, Rates());
 
-            var result = converter.Convert(1, 2, 100, new DateTime(2026, 7, 24), rates);
-            Assert(!result.HasValue, "Null rate should produce null result");
-
-            Console.WriteLine("  Null handling: PASS");
+            Assert.AreEqual(289m, result.Value, 0.0001m);
         }
 
-        private static void TestScaleHandling()
+        [TestMethod]
+        public void Convert_CrossRate_GoesThroughByn()
         {
-            var converter = new CurrencyConverter();
-            var rates = new List<CurrencyRateRecord>
-            {
-                new CurrencyRateRecord { CurId = 1, Date = new DateTime(2026, 7, 24), OfficialRate = 350.12m, Scale = 100, Abbreviation = "RUB" },
-                new CurrencyRateRecord { CurId = 2, Date = new DateTime(2026, 7, 24), OfficialRate = 2.89m, Scale = 1, Abbreviation = "USD" }
-            };
+            // byn_per_unit_USD = 2.89, byn_per_unit_EUR = 3.35
+            // 100 * 2.89 / 3.35 = 86.2686...
+            var result = _converter.Convert(UsdId, EurId, 100m, _date, Rates());
 
-            // Convert 10000 RUB to USD
+            Assert.AreEqual(100m * 2.89m / 3.35m, result.Value, 0.0001m);
+        }
+
+        [TestMethod]
+        public void Convert_UsesScaleForScaledCurrency()
+        {
             // byn_per_unit_RUB = 350.12 / 100 = 3.5012
-            // byn_per_unit_USD = 2.89 / 1 = 2.89
-            // amount_USD = 10000 * 3.5012 / 2.89 = 12114.87...
-            var result = converter.Convert(1, 2, 10000, new DateTime(2026, 7, 24), rates);
+            // 10000 * 3.5012 / 2.89 = 12114.8789...
+            var result = _converter.Convert(RubId, UsdId, 10000m, _date, Rates());
 
-            var expected = 10000 * (350.12m / 100) / 2.89m;
-            var tolerance = 0.01m;
-
-            Assert(result.HasValue, "Result should have value");
-            Assert(Math.Abs(result.Value - expected) < tolerance, "Scale handling");
-
-            Console.WriteLine("  Scale handling: PASS");
+            Assert.AreEqual(10000m * (350.12m / 100) / 2.89m, result.Value, 0.0001m);
         }
 
-        private static void Assert(bool condition, string name)
+        [TestMethod]
+        public void Convert_TakesLatestRateNotAfterRequestedDate()
         {
-            if (!condition)
-                throw new Exception($"Assertion failed: {name}");
+            var rates = new List<CurrencyRateRecord>
+            {
+                Record(UsdId, new DateTime(2026, 7, 20), 2.80m, 1),
+                Record(UsdId, new DateTime(2026, 7, 24), 2.89m, 1),
+                Record(UsdId, new DateTime(2026, 7, 27), 3.10m, 1),
+                Record(EurId, new DateTime(2026, 7, 21), 3.30m, 1),
+                Record(EurId, new DateTime(2026, 7, 24), 3.35m, 1)
+            };
+
+            var result = _converter.Convert(UsdId, EurId, 100m, new DateTime(2026, 7, 22), rates);
+
+            // Newest rates on or before 2026-07-22 are 2.80 for USD and 3.30 for EUR
+            Assert.AreEqual(100m * 2.80m / 3.30m, result.Value, 0.0001m);
+        }
+
+        [TestMethod]
+        public void Convert_ReturnsNullWhenRateMissing()
+        {
+            var rates = new List<CurrencyRateRecord> { Record(UsdId, _date, 2.89m, 1) };
+
+            var result = _converter.Convert(UsdId, EurId, 100m, _date, rates);
+
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void Convert_ReturnsNullWhenRateIsNull()
+        {
+            var rates = new List<CurrencyRateRecord>
+            {
+                Record(UsdId, _date, null, 1),
+                Record(EurId, _date, 3.35m, 1)
+            };
+
+            var result = _converter.Convert(UsdId, EurId, 100m, _date, rates);
+
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void Convert_ReturnsNullWhenTargetRateIsZero()
+        {
+            var rates = new List<CurrencyRateRecord>
+            {
+                Record(UsdId, _date, 2.89m, 1),
+                Record(EurId, _date, 0m, 1)
+            };
+
+            var result = _converter.Convert(UsdId, EurId, 100m, _date, rates);
+
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void Convert_ReturnsNullWhenNoRecordIsOldEnough()
+        {
+            var rates = new List<CurrencyRateRecord>
+            {
+                Record(UsdId, new DateTime(2026, 7, 25), 2.89m, 1),
+                Record(EurId, new DateTime(2026, 7, 24), 3.35m, 1)
+            };
+
+            var result = _converter.Convert(UsdId, EurId, 100m, _date, rates);
+
+            Assert.IsNull(result);
+        }
+
+        private static List<CurrencyRateRecord> Rates()
+        {
+            return new List<CurrencyRateRecord>
+            {
+                Record(UsdId, new DateTime(2026, 7, 24), 2.89m, 1, "USD"),
+                Record(EurId, new DateTime(2026, 7, 24), 3.35m, 1, "EUR"),
+                Record(RubId, new DateTime(2026, 7, 24), 350.12m, 100, "RUB")
+            };
+        }
+
+        private static CurrencyRateRecord Record(int curId, DateTime date, decimal? rate, int scale, string abbreviation = null)
+        {
+            return new CurrencyRateRecord
+            {
+                CurId = curId,
+                Date = date,
+                OfficialRate = rate,
+                Scale = scale,
+                Abbreviation = abbreviation
+            };
         }
     }
 }
